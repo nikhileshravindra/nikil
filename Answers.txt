@@ -1,0 +1,144 @@
+
+3)
+cp /etc/fstab /var/tmp/fstab
+cd /var/tmp
+  setfacl -m u:curly:rw /fstab
+  setfacl -m u:larry:x /fstab
+  setfacl -m o::r /fstab
+4)
+i)
+tar -cvf /etc.tar /etc
+mkdir /opt
+cp /etc.tar /opt
+
+yum install autofs* 
+yum install nfs-utilis
+yum install rpc-bind
+firewall-cmd --add-services = nfs,mountd,rpc-bind
+firewall-cmd --add-port=2049/tcp, 111/udp
+server side : mkdir -p /shares/manual 
+vi /etc/exports
+     /shares/manual 192.168.36.100(rw,sec=sys.sync)
+exportfs -vra
+systemctl restart nfs-server
+ client side: 
+showmount -e 192.168.36.100
+vi /etc/auto.master
+  /-  /etc/maps.txt
+vi /etc/maps.txt
+  /opt/tmp    192.168.36.100:/shares/manual
+systemctl restart autofs
+
+ii)
+server side:                             same uid                                 client side:
+useradd natasha  ----------------------------------- useradd -u uid natasha
+echo natasha:natasha|chpasswd                                echo natasha:natasha|chpasswd
+login into natasha user:                                               login into natasha user:                
+ssh-keygen -t rsa    				ssh-keygen -t rsa
+cat id.rsa-pub   				cat id.rsa-pub   
+cd .ssh                                                                             cd .ssh
+ vi authorizedkeys                                                          vi authorizedkeys                       
+paste the client side  id.rsa-pub                                    paste the server side  id.rsa-pub
+ ssh natasha@192.168.36.200 			ssh natasha@192.68.36.100
+                         ---------------or--------------------------
+ssh-copy-id natasha@192.168.36.200                            ssh-copy-id natasha@192.168.36.100
+ 
+5) 
+*- nmcli con add con-name team1 ifname team1 type team config '{"runner":{"name":"activebackup"}}' ipv4.method manual  ipv4.addresses192.168.136.100/16 
+ipv4.gateway 192.168.1.20 ipv4.dns 192.168.2.45 ipv4.dns-search alclabs.in
+*- nmcli con add con-name eth1 ifname ens224 type team-slave master team1
+*- nmcli con add con-name eth2  ifname ens256 type team-slave master team1
+nmcli con up eth1
+nmcli con up eth2
+yum install team*
+teamdctl team1 state
+use ping command to check the connectivity 
+check the continous connectivity by dowing the the one connection
+nmcli dev dis ens192;sleep 120;nmcli dev con ens192
+ 
+6)
+yum install targetcli*
+yum install iscsi*
+server side:
+--------------
+targetcli 
+/backstore/block create disck1 /dev/sdb2
+cd iscsi
+iscsi~]create iqn.2023-05.suriya.alclabs.in
+iscsi~]cd iqn.2023-05.suriya.alclabs.in
+iqn.2023-05.suriya.alclabs.in~]cd tpg1
+tpg1~]cd portals 
+portals ~] delete 0.0.0.0 3260
+portals ~] create 192.1698.36.100
+portals ~] cd ..
+tpg1~] cd luns
+luns~] create /backstores/block/disk1
+luns~]cd ..
+tpg1~] cd acls
+acls~] create iqn (client initiator iqn)
+client side:
+iscsiadm -m discovery -t st -p 192.168.36.100 
+iscsiadm -m node -T copy the above initiatorname -p 192.168.36.100 --login
+
+7)lsscsi
+yum install gdisk
+create a partition for the disk with 512M
+mkfs /dev/sdc1
+mkdir /targetcli
+mount /dev/sdc1 /targetcli
+
+8)Server side:
+ mkdir /exported
+vi /etc/exports
+ /exported 192.168.36.100(ro,sec=sys,sync)
+exportfs -vra
+
+10 ) client side:
+showmount -e 192.168.36.100
+mkdir /mnt/nfs-exported
+mount -t nfs 192.168.36.100:/exported /mnt/nfs-exported
+vi /etc/fstab
+192.168.36.100:/exported 	/mnt/nfs-exported 	nfs 	defaults 	0 0
+ 
+11)yum install smba*
+ yum install cifs*
+server side :
+vi /etc/selinux/config                                                                                12) vi /etc/selinux/config
+ disable the selinux in configuration                                                           disable the selinux in configuration
+setenforce 0                                                                                                   setenforce 0
+getenforce                                                                                                     getenforce 
+should display permissive                                                                            should display permissive
+add services: samba, smb-client                                                                   add-ports:138,137tcp and udp
+add-ports:138,137tcp and udp                                                                     add services: samba, smb-client 
+vi /etc/samba/smb.conf                                                                               vi /etc/.pass.sec
+ workgroup = STAFF                                                                                               username=sarah
+ allow host = 192.168.36.*                                                                                       passwrod=sarah
+[smbshare]                                                                                                     chmod 400 /etc/.pass.sec
+  comment = samba                                                                                       mkdir -p /mnt/slaesshare
+                                                                                                                     mount -t cifs -o credentials=/etc/.pass.sec //192.168.36.100/smbshare /mnt/slaesshare
+  path = /smbshare                                                                                     vi /etc/fstab
+  valid users = sarah , bob                                                                           //192.168.36.100/smbshare  /mnt/slaesshare     cifs  defaults,credentials=/etc/.pass.sec 0,0
+  write list = sarah
+   browseable = yes
+useradd sarah,bob
+set password for sarah,bob
+both the uids should be same in clint side and server side
+setfacl -m u:sarah:rwx /smbshare
+setfacl -m u:bob:rwx /smbshare
+smbpasswd -a sarah
+password:
+smbpasswd -a bob
+password:
+
+13) yum update kernel -y
+      yum list kernel
+
+
+
+                                                     
+
+
+
+
+
+
